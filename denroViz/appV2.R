@@ -8,9 +8,13 @@ library(readxl)
 library(readr)
 library(shinyFiles)
 library(fs)
+library(lubridate)
+library(dendRoAnalyst)
+library(xts)
 
 workdirectory <- getwd()
-
+plot <- NULL
+#Clearing the console
 
 
 ################################################################################
@@ -41,7 +45,7 @@ body <-  dashboardBody(
           column(9,style = "margin-top: 25px;",textInput("mypath", label = " ", value = '../data',width = '100%')),
           column(3, style = "margin-top: 45px;",shinyDirButton("directory", "Select Folder", "Please select a folder"))),
         
-      
+        hr(),
       
         fluidRow(
           #' Here, we select the file from the list of available files in the directory.
@@ -68,25 +72,55 @@ body <-  dashboardBody(
                  uiOutput("dateEnd"))
           ), 
         
-        # Here, we display the output where the results data will be rendered
-        tableOutput("mytable"), 
+        hr(),
         
-        # The download button UI
-        downloadButton("downloadData", "Download dataframe"), 
-        
+        # # Outputing data head and plot
+        # fluidRow(
+        #   column(8,
+        #           tableOutput("phase_table")),
+        # column(8,
+        #          plotOutput("dataplot"))
+        #   
+        # ),
         
         # Here, we display the options for the plot finishing
         fluidRow(
           column(3,
-                 textInput("color", label = "Color", value = "#FFD700"),
-                 selectInput("type","Type",c("blank", "solid", "dashed", "dotted", "dotdash", "longdash", "twodash"),"solid"),
-                 textInput("xlabel", label = "xlabel", value = "xlabel"),
-                 textInput("ylabel", label = "ylabel", value = "ylabel"),
-                 textInput("title", label = "Title", value = "Title")),
+                 textInput("xlabel", label = "xlabel", value = "Date/Time"),
+                 textInput("ylabel", label = "ylabel", value = "Amplitude"),
+                 textInput("title", label = "Title", value = "Phases"),
+                 textInput("legend", label = "Legend", value = "Phase"),
+                 # The download button UI
+                 actionButton("downloadData", "Save Data"),
+                 
+                 # downloadButton("downloadData", "Download dataframe"),
+                 actionButton("downloadPlot", "Save Plot")),
+                 
           column(9,
-                 plotOutput("plot1"),
-                 downloadButton('downloadPlot','Download Plot'))
-          )
+                 plotOutput("cycleplot")
+                 )
+          ),
+        
+        hr(),
+        # Here, we display the output where the results data will be rendered
+        fluidRow(
+          column(3),
+          tableOutput("phase_table")
+        ),
+        
+        fluidRow(
+          column(1),
+          column(10,
+                 
+          plotOutput("tree_water_deficit")),
+          column(1)
+          # column(10,
+          #        
+          # column(1)
+          
+        )
+        
+
         ), #End of Visualization tab
       
       # Nothing for now. To be filled later
@@ -97,8 +131,10 @@ body <-  dashboardBody(
       # Nothing for now. To be filled later
       tabItem(tabName = "nothing2"
       )
+      
     )
   ) #End of Dashboard Body
+
 
 ui <- dashboardPage(header, side, body)
 
@@ -108,7 +144,9 @@ ui <- dashboardPage(header, side, body)
 
 server <- function(input, output, session) {
   
- 
+  cat("\014")  
+  
+  #Loading the right dataset
   mydata <- reactive({
     
     if(input$radio_select == '2'){ #In files are on a a local HD
@@ -117,7 +155,7 @@ server <- function(input, output, session) {
       }
       else{
         data <- read.csv(file.path(input$mypath, '/', input$selectAFile), header = TRUE, sep = ";", stringsAsFactors = FALSE)
-        data$date <- as.POSIXct(strptime(data$date, format = "%Y-%m-%d %H:%M:%OS"))
+        data$date <- as.POSIXct(strptime(data$date, format = "%Y-%m-%d %H:%M:%S"))
         data
       }
     }
@@ -125,12 +163,11 @@ server <- function(input, output, session) {
       if(is.integer(input$directory) == FALSE){
         setwd(parseDirPath(volumes, input$directory))
         data <- read.csv(file.path(parseDirPath(volumes, input$directory), input$selectAFile), header = TRUE, sep = ";", stringsAsFactors = FALSE)
-        data$date <- as.POSIXct(strptime(data$date, format = "%Y-%m-%d %H:%M:%OS"))
-        data 
+        data$date <- as.POSIXct(strptime(data$date, format = "%Y-%m-%d %H:%M:%S"))
       }
       else{
         data <- read.csv(file.path('../data', input$selectAFile), header = TRUE, sep = ";", stringsAsFactors = FALSE)
-        data$date <- as.POSIXct(strptime(data$date, format = "%Y-%m-%d %H:%M:%OS"))
+        data$date <- as.POSIXct(strptime(data$date, format = "%Y-%m-%d %H:%M:%S"))
         data 
       }
     }
@@ -150,12 +187,12 @@ server <- function(input, output, session) {
                  restrictions = system.file(package = "base")
                  )
   
-  # Just for debugging
-  observe({
-    cat("\ninput$directory value:\n\n")
-    # print(input$directory)
-  })
-  
+  # # Just for debugging
+  # observe({
+  #   cat("\ninput$directory value:\n\n")
+  #   # print(input$directory)
+  # })
+  # 
   
   # Populate the textinput with the right path
   observe({
@@ -243,27 +280,154 @@ server <- function(input, output, session) {
    })
   
   # Rendering data to plot
-  dataplot <- reactive({
-    data <-  mydata() %>% filter(date>=input$dateStart & date<=input$dateEnd+1)
-    data$date <- strftime(data$date,'%Y-%m-%d %H:%M:%OS')
+  cycle_data <- reactive({
+    req(input$dateStart)
+    req(input$dateEnd)
+    data <-  mydata() %>% filter(yday(date)>= yday(input$dateStart)) %>% 
+      filter(yday(date) <= yday(input$dateEnd))
+    print(str(data))
+    
+    # data$date <- strftime(data$date,'%Y-%m-%d %H:%M:%S')
+    
+    print(str(data))
+    dendro_num = which(input$selectAColumn1 == names(data))
+    daily_stats_dendro <- daily.data(data, TreeNum = dendro_num)
+    # print(head(data))
+    sc_stat <- phase.sc(data,
+             TreeNum = 1,
+             smoothing = 1,
+             outputplot = FALSE,
+             days = c(ydad(input$dateStart), yday(input$dateEnd))
+             )
+    
+    #Removing the Median
+    daily_stats_dendro <- daily_stats_dendro %>% select(-median)
+    
+    #' Adding Daily Net Growth = Daily Max Day - Daily Max Day(-1)
+
+    # Grouping the data per day
+    a <- data %>% 
+      group_by(yday(data$date)) %>% 
+      summarise_at(vars(input$selectAColumn1), max)
+
+    #Computing the daily net growth
+    daily_stats_dendro$daily_net_growth <- NA
+    
+    if(length(daily_stats_dendro$daily_net_growth) > 1){
+      for(i in 2:length(daily_stats_dendro$daily_net_growth)){
+        daily_stats_dendro$daily_net_growth[i] <- a[i, 2] - a[i-1,2]
+      }
+    }
+    
+    #' Adding daily shrinkage = Daily Max AM - Daily min PM
+    # data$date <- strptime(data$date, format = "%Y-%m-%d %H:%M:%OS")
+
+    df <- data %>% mutate(hour = as.numeric(hour(date)))
+    dailyAm <- df %>% filter(hour >=0 &hour <= 11)
+    dailyPM <- df %>% filter(hour >=12 &hour <= 23)
+    
+    daily_max_am <- dailyAm %>% 
+      group_by(yday(dailyAm$date)) %>% 
+      summarise_at(vars(input$selectAColumn1), max)
+    
+    daily_min_pm <- dailyPM %>% 
+      group_by(yday(dailyPM$date)) %>% 
+      summarise_at(vars(input$selectAColumn1), min)
+    
+    names(daily_max_am) <- c('doy', 'max')
+    names(daily_min_pm) <- c('doy', 'min')
+    
+    s <- merge(daily_max_am, daily_min_pm, by = 'doy', all = T)
+    s <- s %>% mutate(ds = max - min)
+    daily_stats_dendro$daily_shrinkage <- s$ds
+    
+    data$phase_sc <- sc_stat$SC_phase$Phases
+    
+    cycle_data <- NULL
+    cycle_data$daily_stats_dendro <- daily_stats_dendro
+    cycle_data$original_series <- data
+    
+    cycle_data
+    
+    })
+  
+  # Rendering data to plot
+  series_plot <- reactive({
+    data <-  mydata() %>% filter(yday(date)>= yday(input$dateStart)) %>%
+      filter(yday(date) <= yday(input$dateEnd))
+    data$date <- strftime(data$date,'%Y-%m-%d %H:%M:%S')
     data
     })
   
+  
   # Rendering the output table
-  output$mytable <-  renderTable({
-    head(dataplot())
+  output$phase_table <-  renderTable({
+    df <- cycle_data()
+    df <- df$daily_stats_dendro
+    head(df)
     })
   
   # Rendering the output plot
-  output$plot1 <- renderPlot({
+  output$cycleplot <- renderPlot({
     
     req(input$selectAColumn1)
-    ggplot(data = dataplot(), aes(x= dataplot()[,1], y = dataplot()[,input$selectAColumn1] ,group=1))+
-      labs(x = input$xlabel, y= input$ylabel)+
-      labs(title = input$title)+
-      geom_line(color=input$color,linetype = input$type)
+    data <- cycle_data()
+    # print(data)
+    df <- data$original_series
+    df <- na.omit(df, cols = daily_net_growth)
+    
+    # print(head(df))
+    # print(str(df))
+    df$date <- as.POSIXct(df$date,'%Y-%m-%d %H:%M:%S')
+    print(str(df))
+    # df <- df[-1,]
+    # print(length(df$date))
+    # print(length(df$T1A1))
+    # plot(df$date, df$T1A1)
+    plot <- ggplot(df, aes(x = date, y = df[,input$selectAColumn1])) + 
+      geom_point(aes(colour = factor(phase_sc))) + 
+      scale_colour_manual(values = c("orangered2", "sandybrown", "moccasin")) + 
+      theme_bw() + 
+      labs(x = input$xlabel,
+           y = input$ylabel,
+           color = input$legend)
+    
+    plot
+
   })
-  }
+  
+  output$tree_water_deficit <- renderPlot({
+    req(input$selectAColumn1)
+    req(input$dateStart)
+    req(input$dateEnd)
+    data <-  mydata() %>% filter(yday(date)>= yday(input$dateStart)) %>%
+      filter(yday(date) <= yday(input$dateEnd))
+    dendro_num = which(input$selectAColumn1 == names(data))
+
+    zg_stats <- phase.zg(data,
+                         TreeNum = dendro_num,
+                         outputplot = TRUE,
+                         days = c(yday(input$dateStart), yday(input$dateEnd)))
+
+  })
+  
+  
+  observeEvent(input$downloadData, {
+    file <- paste(input$mypath,"/../results/Res_",substr(input$selectAFile,1,nchar(input$selectAFile)-4),"_",input$selectAColumn,input$dateStart,"_",input$dateEnd, ".csv", sep = "")
+      df <- cycle_data()
+      df <- df$daily_stats_dendro
+      write.csv(df, file, row.names = FALSE)
+      print(paste('Results saved in ', file))
+    
+    })
+
+  observeEvent(input$downloadPlot, {
+    file <- paste(input$mypath,"/../results/Res_",substr(input$selectAFile,1,nchar(input$selectAFile)-4),"_",input$selectAColumn,input$dateStart,"_",input$dateEnd, ".png", sep = "")
+    ggsave(file, plot = plot, device = 'png')    
+  })
+  
+  
+}
 
 # Encapsulating the app
 shinyApp(ui, server)
