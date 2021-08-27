@@ -19,7 +19,7 @@ knitr::opts_chunk$set(
 [![Travis build status](https://travis-ci.com/nasserdr/dendroSense.svg?branch=master)](https://travis-ci.com/nasserdr/dendroSense)
 <!-- badges: end -->
 
-The goal of dendroSense is to ...
+DendroSense package offers an intuitive graphical user interface to analyze Dendrometers data.
 
 ## Installation
 
@@ -37,18 +37,20 @@ And the development version from [GitHub](https://github.com/) with:
 ```
 ## Example
 
-This is a basic example which shows you how to solve a common problem:
-
+To run the GUI, open the file 'gui/DendroSenseGUI.R' and click on 'Run' or execute the following command
+in the Console: 
 ```{r example}
-#library(dendroSense)
-## basic example code
+runApp('gui/DendroSenseGUI.R')
 ```
+
+
+**TO DO:**
+
+- [ ] Code for treating gaps in large files automatically.
+- [ ] Code for aggregating daily, phase and cycle statistics in a dataframe for a list of files.
+
 
 What is special about using `README.Rmd` instead of just `README.md`? You can include R chunks like so:
-
-```{r cars}
-#summary(cars)
-```
 
 You'll still need to render `README.Rmd` regularly, to keep `README.md` up-to-date. `devtools::build_readme()` is handy for this. You could also use GitHub Actions to re-render `README.Rmd` every time you push. An example workflow can be found here: <https://github.com/r-lib/actions/tree/master/examples>.
 
