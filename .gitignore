@@ -2,3 +2,5 @@
 .Rhistory
 .RData
 .Ruserdata
+react_log.R
+.travis.yml
