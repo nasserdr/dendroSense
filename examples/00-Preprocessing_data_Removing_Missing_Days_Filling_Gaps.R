@@ -212,9 +212,17 @@ all_sc_cycle <- NULL
 all_sc_phase <- NULL
 all_zg_cycle <- NULL
 all_zg_phase <- NULL
-out <- c(21,29)
-files <- files[-c(out)]
-i <- length(out)
+# out_without_removing_last_points <- 21, 30  31  39  42  48  55  64  65  73  76  77  81  83 102 105 110 114 115 117 118 122 139 140 144 150 158 168 169 190 213 218 229 230 235 242 244 245 246 247
+# [41] 249 266 273 275 279 280 299 310 311 312 314 318 337 342 360 370 371 408 412 429 462 471 490 491 492 493 495 506 519 520 528 541 547 549 556 561 568 571 583 599
+# [81] 603 606 607 609 627 628 630 635 636 655 668 679 704 715 716 725 732 735 739 740 755 764 765 766 780 804 820 832 837 839 841 844 851 854 863 865 866 869 871 872
+# [121] 873 880 883 884 895 901 903 906
+
+# out_removing_last_7 <- 7  21  31  48  64  76  77  94 102 105 114 117 129 150 154 156 200 204 209 214 229 234 245 247 249 250 266 271 273 274 275 278 280 299 310 311 312 313 315 342
+# [41] 343 353 365 375 393 407 408 412 426 431 437 448 454 470 471 481 482 489 490 491 492 493 499 500 501 504 506 519 530 541 544 556 566 599 604 608 612 626 627 628
+# [81] 630 634 635 656 676 683 704 714 715 723 725 732 735 740 763 764 769 772 773 774 775 801 804 805 807 823 837 838 841 847 850 851 858 859 866 869 871 873 880 884
+# [121] 885 886 888 903
+out <- NULL
+i <- 0
 
 for(file in files){
   i <- i + 1
@@ -231,6 +239,7 @@ for(file in files){
   dendro_df <- dendro_df  %>% distinct(Time, .keep_all = TRUE)
   dendro_df <- spline.interpolation(dendro_df, resolution = 15, fill = TRUE)
   dendro_df <- dendro_df[c(1,3)]
+  dendro_df <- dendro_df[1:(nrow(dendro_df) - 20),]
   colnames(dendro_df) <- c('Time', 'T2')
   
   dendro_df$Date <- date(dendro_df$Time)
@@ -292,10 +301,17 @@ for(file in files){
     sc_phase_df$base <- base
     sc_phase_df$dendro <- dendro
     
-    zg_stats <- phase.zg(dendro_df[c(1,2)],
-                         TreeNum = 1,
-                         outputplot = FALSE,
-                         days = c(day_s, day_e))
+    res <- try(zg_stats <- phase.zg(dendro_df[c(1,2)],
+                                    TreeNum = 1,
+                                    outputplot = FALSE,
+                                    days = c(day_s, day_e)))
+    if(inherits(res, "try-error"))
+    {
+      out <- c(out, i)
+      next
+    }
+    
+    
 
 
     zg_cycle_df <- data.frame(
@@ -326,6 +342,7 @@ for(file in files){
   }
 }
 
+out
 write.csv(x = as.data.frame(all_stats),
           file = file.path(odir, 'all_stats.csv'),
           row.names = FALSE)
