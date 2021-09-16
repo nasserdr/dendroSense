@@ -10,8 +10,8 @@ library(xts)
 library(ggplot2)
 
 # Listing all the files inside clean_signals 
-idir = "~/mnt/agroscope/Data-Work/26_Agricultural_Engineering-RE/263_DP/03_Persoenliche_Unterlagen/Wata/08-R_dendro_files/Hassan/Clean_signals"
-odir = "~/mnt/agroscope/Data-Work/26_Agricultural_Engineering-RE/263_DP/03_Persoenliche_Unterlagen/Wata/08-R_dendro_files/Hassan/Clean_signals_gathered"
+idir = "~/mnt/agroscope/Data-Work/26_Agricultural_Engineering-RE/263_DP/03_Persoenliche_Unterlagen/Wata/08-R_dendro_files/Hassan/1-Clean_signals"
+odir = "~/mnt/agroscope/Data-Work/26_Agricultural_Engineering-RE/263_DP/03_Persoenliche_Unterlagen/Wata/08-R_dendro_files/Hassan/2-Clean_signals_gathered"
 
 files <- list.files(idir, pattern = '*.csv')
 fs <- strsplit(files, "_")

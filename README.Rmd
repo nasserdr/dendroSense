@@ -40,7 +40,8 @@ And the development version from [GitHub](https://github.com/) with:
 To run the GUI, open the file 'gui/DendroSenseGUI.R' and click on 'Run' or execute the following command
 in the Console: 
 ```{r example}
-runApp('gui/DendroSenseGUI.R')
+library(dendroSense)
+runGui()
 ```
 
 
