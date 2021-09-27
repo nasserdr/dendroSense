@@ -38,7 +38,7 @@ hist(counts)
 #From the counts histogram, we see that we need to remove days when n <80
 
 #############################################################################################
-##########PART A1: Gather all dendros of each base in one datafram ##########################
+##########PART A1: Gather all dendros of each base in one dataframe ##########################
 #############################################################################################
 idir <- "~/mnt/agroscope/Data-Work/26_Agricultural_Engineering-RE/263_DP/03_Persoenliche_Unterlagen/Wata/08-R_dendro_files/Hassan/3-B-Jumps_fixed"
 odir <- "~/mnt/agroscope/Data-Work/26_Agricultural_Engineering-RE/263_DP/03_Persoenliche_Unterlagen/Wata/08-R_dendro_files/Hassan/3-A-Data_per_base"
@@ -48,7 +48,7 @@ files <- list.files(idir, pattern = '*.csv')
 fs <- strsplit(files, "_")
 fs_df <- data.table::transpose(as.data.frame(fs))
 
-couples <- fs_df %>% select(4,6)
+couples <- fs_df %>% dplyr::select(4,6)
 couples <- distinct(couples)
 names(couples) <- c('base', 'dendro')
 base <- couples$base[1]
@@ -96,7 +96,7 @@ for(file in files){
   date_to_keep <- samples_per_day$Date[samples_per_day$n >= 80]
   dendro_df_days_to_keep <- dendro_df %>% 
     filter(Date %in% date_to_keep) %>% 
-    select(Time, T2)
+    dplyr::select(Time, T2)
   write.csv(x = as.data.frame(dendro_df_days_to_keep),
             file = file.path(odir, file), sep = ",",
             row.names = FALSE)
@@ -109,7 +109,7 @@ for(file in files){
 idir <- "~/mnt/agroscope/Data-Work/26_Agricultural_Engineering-RE/263_DP/03_Persoenliche_Unterlagen/Wata/08-R_dendro_files/Hassan/4-Jumps_Fixed_Partial_days_Removed"
 odir <- "~/mnt/agroscope/Data-Work/26_Agricultural_Engineering-RE/263_DP/03_Persoenliche_Unterlagen/Wata/08-R_dendro_files/Hassan/5-Jumps_fixed_partitioned"
 files <- list.files(idir, pattern = '*.csv')
-
+file <- files[1]
 split_file_with_empty_days <- function(file, idir, odir){
   dendro_df <- read.csv(file.path(idir, file), header = TRUE, sep = ",", stringsAsFactors = FALSE)
   colnames(dendro_df) <- c('Time', 'T2')
@@ -156,74 +156,35 @@ for(file in list.files(odir)){
 idir <- "~/mnt/agroscope/Data-Work/26_Agricultural_Engineering-RE/263_DP/03_Persoenliche_Unterlagen/Wata/08-R_dendro_files/Hassan/5-Jumps_fixed_partitioned"
 odir <- "~/mnt/agroscope/Data-Work/26_Agricultural_Engineering-RE/263_DP/03_Persoenliche_Unterlagen/Wata/08-R_dendro_files/Hassan/6-Jumps_fixed_partitioned_no_gaps"
 
-#Creating a reference dendrometer
-# file_ref <- "3-B-Jumps_fixed/Jumps_fixed_Base_1811_Dendro_531_Filtered.csv"
-# ref_dend <- read.csv(file.path("~/mnt/agroscope/Data-Work/26_Agricultural_Engineering-RE/263_DP/03_Persoenliche_Unterlagen/Wata/08-R_dendro_files/Hassan/"
-#                                , file_ref), header = TRUE, sep = ",", stringsAsFactors = FALSE)
-# colnames(ref_dend) <- c('Time', 'T2')
-# ref_dend$Time <- as.POSIXct(ref_dend$Time, format = "%Y-%m-%d %H:%M:%OS")
-
 files <- list.files(idir, pattern = ".csv")
 file <- files[1]
 
 for(file in files){
   dendro_df <- read.csv(file.path(idir, file), header = TRUE, sep = ";", stringsAsFactors = FALSE)
   colnames(dendro_df) <- c('Time', 'T2')
+
+  dendro_df <- dendro_df  %>% distinct(Time, .keep_all = TRUE)
+  dendro_df <- spline.interpolation(dendro_df, resolution = 15, fill = TRUE)
+  dendro_df <- dendro_df[c(1,3)]
+  colnames(dendro_df) <- c('Time', 'Value')
+  
+  
   dendro_df$Time <- as.POSIXct(dendro_df$Time, format = "%Y-%m-%d %H:%M:%OS", tz= 'CET')
+  write.table(dendro_df, file.path(odir, paste0(substr(file, 1,nchar(file)-4), '_no_gaps.csv')), row.names = FALSE, sep = ';')
   
-  start <- lubridate::date(dendro_df$Time[1])
-  end <- date(last(dendro_df$Time))
-
-  #Why I am having indices bigger than one hour?
-  indices <- zoo(NA,
-                 seq(as.POSIXct(start, tz = 'CET'),
-                     as.POSIXct(end, tz = 'CET'),by="15 min"))
-  # df_ref <- data.frame(
-  #   Time = indices,
-  #   T2 = NA)
-  
-  df_ref$Time <- rownames(df_ref)
-  rownames(df_ref) <- NULL
-  df_ref$Time <- as.POSIXct(df_ref$Time, format = "%Y-%m-%d %H:%M:%OS")
-  
-  new_dendr <- merge(dendro_df, df_ref, by = "Time", all.x = TRUE)
-
-  colnames(new_dendr) <- c('Time', 'T2')
-  
-  dendro_df_filled <- spline.interpolation(new_dendr, 15 , fill = FALSE)
-  
-  # dendro_df_filled %>% group_by(Date) %>% tally()
-  
-  # df1_NI<-network.interpolation(df=dendro_df, referenceDF=ref_dend, niMethod='linear')
-  
-  }
-
+}
 
 #############################################################################################
 ##########PART E: Compute all the stats and save them in the folder Results #################
 #############################################################################################
 
-idir <- "~/mnt/agroscope/Data-Work/26_Agricultural_Engineering-RE/263_DP/03_Persoenliche_Unterlagen/Wata/08-R_dendro_files/Hassan/5-Jumps_fixed_partitioned"
+idir <- "~/mnt/agroscope/Data-Work/26_Agricultural_Engineering-RE/263_DP/03_Persoenliche_Unterlagen/Wata/08-R_dendro_files/Hassan/6-Jumps_fixed_partitioned_no_gaps"
 odir <- "~/mnt/agroscope/Data-Work/26_Agricultural_Engineering-RE/263_DP/03_Persoenliche_Unterlagen/Wata/08-R_dendro_files/Hassan/Results"
 
 files <- list.files(idir, pattern = ".csv")
 all_stats <- NULL
-all_sc_cycle <- NULL
-all_sc_phase <- NULL
-all_zg_cycle <- NULL
-all_zg_phase <- NULL
-# out_without_removing_last_points <- 21, 30  31  39  42  48  55  64  65  73  76  77  81  83 102 105 110 114 115 117 118 122 139 140 144 150 158 168 169 190 213 218 229 230 235 242 244 245 246 247
-# [41] 249 266 273 275 279 280 299 310 311 312 314 318 337 342 360 370 371 408 412 429 462 471 490 491 492 493 495 506 519 520 528 541 547 549 556 561 568 571 583 599
-# [81] 603 606 607 609 627 628 630 635 636 655 668 679 704 715 716 725 732 735 739 740 755 764 765 766 780 804 820 832 837 839 841 844 851 854 863 865 866 869 871 872
-# [121] 873 880 883 884 895 901 903 906
-
-# out_removing_last_7 <- 7  21  31  48  64  76  77  94 102 105 114 117 129 150 154 156 200 204 209 214 229 234 245 247 249 250 266 271 273 274 275 278 280 299 310 311 312 313 315 342
-# [41] 343 353 365 375 393 407 408 412 426 431 437 448 454 470 471 481 482 489 490 491 492 493 499 500 501 504 506 519 530 541 544 556 566 599 604 608 612 626 627 628
-# [81] 630 634 635 656 676 683 704 714 715 723 725 732 735 740 763 764 769 772 773 774 775 801 804 805 807 823 837 838 841 847 850 851 858 859 866 869 871 873 880 884
-# [121] 885 886 888 903
-out <- NULL
+file <- files[1]
 i <- 0
-
 for(file in files){
   i <- i + 1
   print(paste(
@@ -231,16 +192,86 @@ for(file in files){
     file,
     "Code",
     i
-    ))
+  ))
   dendro_df <- read.csv(file.path(idir, file), header = TRUE, sep = ";", stringsAsFactors = FALSE)
-  # dendro_df <- dendro_df[1:(nrow(dendro_df)-14),]
   colnames(dendro_df) <- c('Time', 'T2')
   dendro_df$Time <- as.POSIXct(dendro_df$Time, format = "%Y-%m-%d %H:%M:%OS")
-  dendro_df <- dendro_df  %>% distinct(Time, .keep_all = TRUE)
-  dendro_df <- spline.interpolation(dendro_df, resolution = 15, fill = TRUE)
-  dendro_df <- dendro_df[c(1,3)]
-  dendro_df <- dendro_df[1:(nrow(dendro_df) - 20),]
+  dendro_df$Date <- date(dendro_df$Time)
+  s <- strsplit(file, '_')
+  base <- s[[1]][4]
+  dendro <- s[[1]][6]
+  
+  daily_stats_dendro <- daily.data(dendro_df, TreeNum = 1)
+  
+  # Computing the DR and selecting the needed cols
+  # DR = MaxSD(Day + 1) - MinSD(Day)
+  # Daily Growth (MXSD(Day + 1) - MXSD (Day))
+  # Cumulative growth (simple cumulative function for the SGC)
+  # Also, adding date
+  if(nrow(daily_stats_dendro) > 1){ # Some variables can^t be computed if we have only one day of daily stats
+    # Adding maximum daily shrinkage
+    daily_stats_dendro <- daily_stats_dendro %>%
+      mutate(MDS = max - min, dendro = dendro, base = base)
+    
+    # Adding a temporary col to compute the DR
+    daily_stats_dendro$temp <- c(daily_stats_dendro$max[2:(nrow(daily_stats_dendro))], NA)
+    
+    daily_stats_dendro <- daily_stats_dendro %>%
+      mutate(DR = temp - min, DG = temp -  max) %>%
+      mutate(CumGrowth = cumsum(DR)) %>% 
+      mutate(Date = unique(dendro_df$Date)) %>% 
+      dplyr::select(base, dendro, Date, DOY, min, max, MDS, DG, DR, CumGrowth)
+    
+    all_stats <- rbind(all_stats, daily_stats_dendro)
+  } else {
+    # Adding maximum daily shrinkage
+    daily_stats_dendro <- daily_stats_dendro %>%
+      mutate(MDS = max - min, dendro = dendro, base = base)
+    
+    daily_stats_dendro <- daily_stats_dendro %>%
+      mutate(DR = NA, DG = NA) %>%
+      mutate(CumGrowth = NA) %>% 
+      mutate(Date = unique(dendro_df$Date)) %>% 
+      dplyr::select(base, dendro, Date, DOY, min, max, MDS, DG, DR, CumGrowth)
+    
+    all_stats <- rbind(all_stats, daily_stats_dendro)
+  }
+  
+}
+
+
+write.csv(x = as.data.frame(all_stats),
+          file = file.path(odir, 'all_stats.csv'),
+          row.names = FALSE)
+
+
+#############################################################################################
+##########PART F: Compute all the Stem Cycle stats and save them in the folder Results ######
+#############################################################################################
+
+idir <- "~/mnt/agroscope/Data-Work/26_Agricultural_Engineering-RE/263_DP/03_Persoenliche_Unterlagen/Wata/08-R_dendro_files/Hassan/6-Jumps_fixed_partitioned_no_gaps"
+odir <- "~/mnt/agroscope/Data-Work/26_Agricultural_Engineering-RE/263_DP/03_Persoenliche_Unterlagen/Wata/08-R_dendro_files/Hassan/Results"
+
+files <- list.files(idir, pattern = ".csv")
+all_sc_cycle <- NULL
+all_sc_phase <- NULL
+file <- files[1]
+for(file in files){
+  i <- i + 1
+  print(paste(
+    "Processing file",
+    file,
+    "Code",
+    i
+  ))
+  dendro_df <- read.csv(file.path(idir, file), header = TRUE, sep = ";", stringsAsFactors = FALSE)
   colnames(dendro_df) <- c('Time', 'T2')
+  dendro_df$Time <- as.POSIXct(dendro_df$Time, format = "%Y-%m-%d %H:%M:%OS")
+  # dendro_df <- dendro_df  %>% distinct(Time, .keep_all = TRUE)
+  # dendro_df <- spline.interpolation(dendro_df, resolution = 15, fill = TRUE)
+  # dendro_df <- dendro_df[c(1,3)]
+  # dendro_df <- dendro_df[1:(nrow(dendro_df) - 20),]
+  # colnames(dendro_df) <- c('Time', 'T2')
   
   dendro_df$Date <- date(dendro_df$Time)
   day_s = yday(dendro_df$Date[1])
@@ -253,31 +284,12 @@ for(file in files){
     base <- s[[1]][4]
     dendro <- s[[1]][6]
     
-    daily_stats_dendro <- daily.data(dendro_df, TreeNum = 1)
-    # Adding maximum daily shrinkage
-    daily_stats_dendro <- daily_stats_dendro %>%
-      mutate(MDS = max - min, dendro = dendro, base = base)
-
-    # Adding a temporary col to compute the DR
-    daily_stats_dendro$temp <- c(daily_stats_dendro$max[2:nrow(daily_stats_dendro)], NA)
-
-    # Computing the DR and selecting the needed cols
-    # DR = MaxSD(Day + 1) - MinSD(Day)
-    # Daily Growth (MXSD(Day + 1) - MXSD (Day))
-    daily_stats_dendro <- daily_stats_dendro %>%
-      mutate(DR = temp - min, DG = temp - max) %>%
-      select(base, dendro, DOY, min, max, MDS, DG, DR)
-
-    # Cumulative growth (simple cumulative function for the SGC)
-    daily_stats_dendro <- daily_stats_dendro %>%
-      mutate(CumGrowth = cumsum(DR))
-    
     sc_stats <- phase.sc(dendro_df,
                          TreeNum = 1,
                          smoothing = 1,
                          outputplot = FALSE,
                          days = c(day_s, day_e))
-
+    
     sc_cycle_df <- data.frame(
       phases = sc_stats$SC_cycle$Phases,
       start = sc_stats$SC_cycle$start,
@@ -288,64 +300,25 @@ for(file in files){
       rate = sc_stats$SC_cycle$rate,
       DOY = sc_stats$SC_cycle$DOY
     )
-
+    
     
     sc_cycle_df$base <- base
     sc_cycle_df$dendro <- dendro
-
+    
     sc_phase_df <- data.frame(
       Time = sc_stats$SC_phase$Time,
       Phases = sc_stats$SC_phase$Phases
     )
-
+    
     sc_phase_df$base <- base
     sc_phase_df$dendro <- dendro
     
-    res <- try(zg_stats <- phase.zg(dendro_df[c(1,2)],
-                                    TreeNum = 1,
-                                    outputplot = FALSE,
-                                    days = c(day_s, day_e)))
-    if(inherits(res, "try-error"))
-    {
-      out <- c(out, i)
-      next
-    }
-    
-    
-
-
-    zg_cycle_df <- data.frame(
-      DOY = zg_stats$ZG_cycle$DOY,
-      Phases = zg_stats$ZG_cycle$Phases,
-      start = zg_stats$ZG_cycle$start,
-      end = zg_stats$ZG_cycle$end,
-      Duration_h = zg_stats$ZG_cycle$Duration_h,
-      magnitude = zg_stats$ZG_cycle$magnitude,
-      rate = zg_stats$ZG_cycle$rate,
-      Max.twd = zg_stats$ZG_cycle$Max.twd,
-      Max.twd.time = zg_stats$ZG_cycle$Max.twd.time,
-      Avg.twd = zg_stats$ZG_cycle$Avg.twd,
-      STD.twd = zg_stats$ZG_cycle$STD.twd
-    )
-
-    zg_phase_df <- data.frame(
-      Time = zg_stats$ZG_phase$Time,
-      Phases = zg_stats$ZG_phase$Phases,
-      TWD = zg_stats$ZG_phase$TWD
-    )
-    all_stats <- rbind(all_stats, daily_stats_dendro)
-    all_sc_cycle <- rbind(all_sc_cycle, sc_cycle_df)
-    all_sc_phase <- rbind(all_sc_phase, sc_phase_df)
-    all_zg_cycle <- rbind(all_zg_cycle, zg_cycle_df)
-    all_zg_phase <- rbind(all_zg_phase, zg_phase_df)
-    
   }
+  
+  all_sc_cycle <- rbind(all_sc_cycle, sc_cycle_df)
+  all_sc_phase <- rbind(all_sc_phase, sc_phase_df)
+  
 }
-
-out
-write.csv(x = as.data.frame(all_stats),
-          file = file.path(odir, 'all_stats.csv'),
-          row.names = FALSE)
 
 write.csv(x = as.data.frame(all_sc_cycle),
           file = file.path(odir, 'all_sc_cycle.csv'),
@@ -355,20 +328,160 @@ write.csv(x = as.data.frame(all_sc_phase),
           file = file.path(odir, 'all_sc_phase.csv'), 
           row.names = FALSE)
 
+
+#############################################################################################
+##########PART G: Compute all theZero Growth  stats and save them in the folder Results #####
+#############################################################################################
+
+idir <- "~/mnt/agroscope/Data-Work/26_Agricultural_Engineering-RE/263_DP/03_Persoenliche_Unterlagen/Wata/08-R_dendro_files/Hassan/6-Jumps_fixed_partitioned_no_gaps"
+odir <- "~/mnt/agroscope/Data-Work/26_Agricultural_Engineering-RE/263_DP/03_Persoenliche_Unterlagen/Wata/08-R_dendro_files/Hassan/Results"
+
+files <- list.files(idir, pattern = ".csv")
+all_zg_cycle <- NULL
+all_zg_phase <- NULL
+i <- 0
+good_files <-  NULL
+bad_files <- NULL
+
+for(file in files){
+  i <- i + 1
+  print(paste(
+    "Processing file",
+    file,
+    "Code",
+    i
+  ))
+  dendro_df <- read.csv(file.path(idir, file), header = TRUE, sep = ";", stringsAsFactors = FALSE)
+  colnames(dendro_df) <- c('Time', 'T2')
+  dendro_df$Time <- as.POSIXct(dendro_df$Time, format = "%Y-%m-%d %H:%M:%OS")
+
+  #Use to remove data after 21:45
+  # last_sample_time <- as.POSIXct(last(date(dendro_df$Time)))
+  # hour(last_sample_time) <- 21
+  # minute(last_sample_time) <- 45
+  # dendro_df <- dendro_df %>% 
+  #   filter(Time <= last_sample_time)
+  
+  
+  dendro_df$Date <- date(dendro_df$Time)
+  day_s = yday(dendro_df$Date[1])
+  day_s
+  day_e =yday(last(dendro_df$Date))
+  day_e
+  
+  
+  
+  if(day_e != day_s){
+    s <- strsplit(file, '_')
+    base <- s[[1]][4]
+    dendro <- s[[1]][6]
+    
+    res <- try(zg_stats <- phase.zg(dendro_df[1:(nrow(dendro_df)-7), c(1,2)],
+                                    TreeNum = 1,
+                                    outputplot = FALSE,
+                                    days = c(day_s, day_e)))
+    if(inherits(res, "try-error")) #Report the bad files
+    {
+      bad_files <- rbind(bad_files,
+                         data.frame(
+                           Name = file,
+                           start_date = dendro_df$Time[1],
+                           end_date = last(dendro_df$Time),
+                           start_val = dendro_df$T2[1],
+                           end_val = last(dendro_df$T2),
+                           nrow = nrow(dendro_df),
+                           err_message = res[1]
+                         ))
+      next
+    } else{ #If there is no error, bind the results together
+      good_files <- rbind(good_files,
+                         data.frame(
+                           Name = file,
+                           start_date = dendro_df$Time[1],
+                           end_date = last(dendro_df$Time),
+                           start_val = dendro_df$T2[1],
+                           end_val = last(dendro_df$T2),
+                           nrow = nrow(dendro_df)
+                  ))
+      zg_cycle_df <- data.frame(
+        DOY = zg_stats$ZG_cycle$DOY,
+        Phases = zg_stats$ZG_cycle$Phases,
+        start = zg_stats$ZG_cycle$start,
+        end = zg_stats$ZG_cycle$end,
+        Duration_h = zg_stats$ZG_cycle$Duration_h,
+        magnitude = zg_stats$ZG_cycle$magnitude,
+        rate = zg_stats$ZG_cycle$rate,
+        Max.twd = zg_stats$ZG_cycle$Max.twd,
+        Max.twd.time = zg_stats$ZG_cycle$Max.twd.time,
+        Avg.twd = zg_stats$ZG_cycle$Avg.twd,
+        STD.twd = zg_stats$ZG_cycle$STD.twd
+      )
+      
+      zg_phase_df <- data.frame(
+        Time = zg_stats$ZG_phase$Time,
+        Phases = zg_stats$ZG_phase$Phases,
+        TWD = zg_stats$ZG_phase$TWD
+      )
+      
+      all_zg_cycle <- rbind(all_zg_cycle, zg_cycle_df)
+      all_zg_phase <- rbind(all_zg_phase, zg_phase_df)
+    }
+  }
+}
+
+
 write.csv(x = as.data.frame(all_zg_cycle),
           file = file.path(odir, 'all_zg_cycle.csv'),
           row.names = FALSE)
 
-write.csv(x = as.data.frame(all_sc_phase),
-          file = file.path(odir, 'all_zg_phase.csv'), 
+good_files <- good_files %>% 
+  separate(start_date, into = c('sdate', 'stime'), sep = 10) %>% 
+  separate(end_date, into = c('edate', 'etime'), sep = 10) %>% 
+  mutate(n_days = nrow/96)
+
+write.csv(x = as.data.frame(good_files),
+          file = file.path(odir, 'files_that_did_not_give_an_error_with_zg_cycle.csv'), 
           row.names = FALSE)
 
-#Support function to know the number of days in each files
+bad_files <- bad_files %>% 
+  separate(start_date, into = c('sdate', 'stime'), sep = 10) %>% 
+  separate(end_date, into = c('edate', 'etime'), sep = 10) %>% 
+  mutate(n_days = nrow/96) %>% 
+  arrange(err_message)
+
+write.csv(x = as.data.frame(bad_files),
+          file = file.path(odir, 'files_that_gave_an_error_with_zg_cycle_removed_before.csv'),
+          row.names = FALSE)
+
+
+#############################################################################################
+##########PART X:  Support code to investigate the problem due to ZG Cycle ##################
+#############################################################################################
+idir <- "~/mnt/agroscope/Data-Work/26_Agricultural_Engineering-RE/263_DP/03_Persoenliche_Unterlagen/Wata/08-R_dendro_files/Hassan/Results"
+ 
+good_file<- 'files_that_did_not_give_an_error_with_zg_cycle.csv'
+bad_file <- "files_that_gave_an_error_with_zg_cycle.csv"
+good_file_minus_last_7 <- 'files_that_did_not_give_an_error_with_zg_cycle_removed_data_after_21_45.csv'
+bad_file_minus_last_7 <- "files_that_gave_an_error_with_zg_cycle_removed_data_after_21_45.csv"
+
+good <- read.csv(file.path(idir, 'files_that_did_not_give_an_error_with_zg_cycle.csv'), header = TRUE, sep = ",", stringsAsFactors = FALSE)
+bad <- read.csv(file.path(idir, 'files_that_gave_an_error_with_zg_cycle.csv'), header = TRUE, sep = ",", stringsAsFactors = FALSE)
+good_7 <- read.csv(file.path(idir, 'files_that_did_not_give_an_error_with_zg_cycle_removed_data_after_21_45.csv'), header = TRUE, sep = ",", stringsAsFactors = FALSE)
+bad_7 <- read.csv(file.path(idir, 'files_that_gave_an_error_with_zg_cycle_removed_data_after_21_45.csv'), header = TRUE, sep = ",", stringsAsFactors = FALSE)
+
+length(intersect(good$Name, good_7$Name))
+length(intersect(bad$Name, bad_7$Name))
+
+#############################################################################################
+##########PART Y: #Support function to know the number of days in each files#################
+#############################################################################################
+
+
 files <- list.files(idir, pattern = ".csv")
 
 two_na <- files[c(13, 31, 76, 105)]
 shorter <- files[c(21, 39, 48, 55, 64, 65, 73, 77, 83, 102, 110, 114, 115, 117, 122, 139, 140, 144,
-             150, 158, 168, 169, 190, 213, 218)]
+                   150, 158, 168, 169, 190, 213, 218)]
 
 days <- NULL
 sizes <- NULL
@@ -387,5 +500,5 @@ for(file in files){
   days[i] <- length(unique(date(dendro_df$Time)))
   sizes[i] <- nrow(dendro_df)
   i <- i + 1
-
+  
 }
