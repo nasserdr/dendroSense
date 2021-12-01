@@ -9,14 +9,16 @@ library(lubridate)
 library(dplyr)
 library(xts)
 
-idir <- "~/mnt/agroscope/Data-Work/26_Agricultural_Engineering-RE/263_DP/03_Persoenliche_Unterlagen/Wata/08-R_dendro_files/Hassan/3-Jumps_fixed"
+
+
+idir <- "~/mnt/agroscope/Data-Work/26_Agricultural_Engineering-RE/263_DP/03_Persoenliche_Unterlagen/Wata/08-R_dendro_files/Hassan/3-B-Jumps_fixed/"
 files <- list.files(idir, pattern = '*.csv')
 
 all_dendros <- NULL
-for(file in files){
+for(file in files[2:length(files)]){
   dendro_df <- read.csv(file.path(idir, file), header = TRUE, sep = ",", stringsAsFactors = FALSE)
   
-  s <- strsplit(file, '_')
+  s <- strsplit(file, '_') 
   base <- s[[1]][4]
   dendro <- s[[1]][6]
   
@@ -41,6 +43,7 @@ for(file in files){
 
   all_dendros <- rbind(all_dendros, daily_stats_dendro)
 }
+
 
 odir <- "~/mnt/agroscope/Data-Work/26_Agricultural_Engineering-RE/263_DP/03_Persoenliche_Unterlagen/Wata/08-R_dendro_files/Hassan/Results"
 

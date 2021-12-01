@@ -138,7 +138,9 @@ ggplot(my_dend_filterd, aes(datetime, T3B2)) +
 zg_stats <- phase.zg(my_dend1, 
          TreeNum = 1,
          outputplot = TRUE,
-         days = c(day_s, day_e))
+         days = c(day_s, day_e),
+ylab1 = "Stem size variation [µm]",
+ylab2 = "TWD [µm]")
 cols <- c("1" = "red", "2" = "darkgreen", "3" = "orange")
 
 

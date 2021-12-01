@@ -376,33 +376,33 @@ for(file in files){
     base <- s[[1]][4]
     dendro <- s[[1]][6]
     
-    res <- try(zg_stats <- phase.zg(dendro_df[1:(nrow(dendro_df)-7), c(1,2)],
+    res <- zg_stats <- phase.zg(dendro_df[,c(1,2)],
                                     TreeNum = 1,
                                     outputplot = FALSE,
-                                    days = c(day_s, day_e)))
-    if(inherits(res, "try-error")) #Report the bad files
-    {
-      bad_files <- rbind(bad_files,
-                         data.frame(
-                           Name = file,
-                           start_date = dendro_df$Time[1],
-                           end_date = last(dendro_df$Time),
-                           start_val = dendro_df$T2[1],
-                           end_val = last(dendro_df$T2),
-                           nrow = nrow(dendro_df),
-                           err_message = res[1]
-                         ))
-      next
-    } else{ #If there is no error, bind the results together
-      good_files <- rbind(good_files,
-                         data.frame(
-                           Name = file,
-                           start_date = dendro_df$Time[1],
-                           end_date = last(dendro_df$Time),
-                           start_val = dendro_df$T2[1],
-                           end_val = last(dendro_df$T2),
-                           nrow = nrow(dendro_df)
-                  ))
+                                    days = c(day_s, day_e))
+    # if(inherits(res, "try-error")) #Report the bad files
+    # {
+      # bad_files <- rbind(bad_files,
+      #                    data.frame(
+      #                      Name = file,
+      #                      start_date = dendro_df$Time[1],
+      #                      end_date = last(dendro_df$Time),
+      #                      start_val = dendro_df$T2[1],
+      #                      end_val = last(dendro_df$T2),
+      #                      nrow = nrow(dendro_df),
+      #                      err_message = res[1]
+      #                    ))
+      # next
+    # } else{ #If there is no error, bind the results together
+      # good_files <- rbind(good_files,
+      #                    data.frame(
+      #                      Name = file,
+      #                      start_date = dendro_df$Time[1],
+      #                      end_date = last(dendro_df$Time),
+      #                      start_val = dendro_df$T2[1],
+      #                      end_val = last(dendro_df$T2),
+      #                      nrow = nrow(dendro_df)
+      #             ))
       zg_cycle_df <- data.frame(
         DOY = zg_stats$ZG_cycle$DOY,
         Phases = zg_stats$ZG_cycle$Phases,
@@ -423,82 +423,25 @@ for(file in files){
         TWD = zg_stats$ZG_phase$TWD
       )
       
+      zg_cycle_df$base <- base
+      zg_cycle_df$dendro <- dendro
+      zg_phase_df$base <- base
+      zg_phase_df$dendro <- dendro
+      
+      
       all_zg_cycle <- rbind(all_zg_cycle, zg_cycle_df)
       all_zg_phase <- rbind(all_zg_phase, zg_phase_df)
+      
+      
     }
   }
-}
+
 
 
 write.csv(x = as.data.frame(all_zg_cycle),
           file = file.path(odir, 'all_zg_cycle.csv'),
           row.names = FALSE)
 
-good_files <- good_files %>% 
-  separate(start_date, into = c('sdate', 'stime'), sep = 10) %>% 
-  separate(end_date, into = c('edate', 'etime'), sep = 10) %>% 
-  mutate(n_days = nrow/96)
-
-write.csv(x = as.data.frame(good_files),
-          file = file.path(odir, 'files_that_did_not_give_an_error_with_zg_cycle.csv'), 
+write.csv(x = as.data.frame(all_zg_phase),
+          file = file.path(odir, 'all_zg_phase.csv'),
           row.names = FALSE)
-
-bad_files <- bad_files %>% 
-  separate(start_date, into = c('sdate', 'stime'), sep = 10) %>% 
-  separate(end_date, into = c('edate', 'etime'), sep = 10) %>% 
-  mutate(n_days = nrow/96) %>% 
-  arrange(err_message)
-
-write.csv(x = as.data.frame(bad_files),
-          file = file.path(odir, 'files_that_gave_an_error_with_zg_cycle_removed_before.csv'),
-          row.names = FALSE)
-
-
-#############################################################################################
-##########PART X:  Support code to investigate the problem due to ZG Cycle ##################
-#############################################################################################
-idir <- "~/mnt/agroscope/Data-Work/26_Agricultural_Engineering-RE/263_DP/03_Persoenliche_Unterlagen/Wata/08-R_dendro_files/Hassan/Results"
- 
-good_file<- 'files_that_did_not_give_an_error_with_zg_cycle.csv'
-bad_file <- "files_that_gave_an_error_with_zg_cycle.csv"
-good_file_minus_last_7 <- 'files_that_did_not_give_an_error_with_zg_cycle_removed_data_after_21_45.csv'
-bad_file_minus_last_7 <- "files_that_gave_an_error_with_zg_cycle_removed_data_after_21_45.csv"
-
-good <- read.csv(file.path(idir, 'files_that_did_not_give_an_error_with_zg_cycle.csv'), header = TRUE, sep = ",", stringsAsFactors = FALSE)
-bad <- read.csv(file.path(idir, 'files_that_gave_an_error_with_zg_cycle.csv'), header = TRUE, sep = ",", stringsAsFactors = FALSE)
-good_7 <- read.csv(file.path(idir, 'files_that_did_not_give_an_error_with_zg_cycle_removed_data_after_21_45.csv'), header = TRUE, sep = ",", stringsAsFactors = FALSE)
-bad_7 <- read.csv(file.path(idir, 'files_that_gave_an_error_with_zg_cycle_removed_data_after_21_45.csv'), header = TRUE, sep = ",", stringsAsFactors = FALSE)
-
-length(intersect(good$Name, good_7$Name))
-length(intersect(bad$Name, bad_7$Name))
-
-#############################################################################################
-##########PART Y: #Support function to know the number of days in each files#################
-#############################################################################################
-
-
-files <- list.files(idir, pattern = ".csv")
-
-two_na <- files[c(13, 31, 76, 105)]
-shorter <- files[c(21, 39, 48, 55, 64, 65, 73, 77, 83, 102, 110, 114, 115, 117, 122, 139, 140, 144,
-                   150, 158, 168, 169, 190, 213, 218)]
-
-days <- NULL
-sizes <- NULL
-i <- 1
-for(file in files){
-  dendro_df <- read.csv(file.path(idir, file), header = TRUE, sep = ";", stringsAsFactors = FALSE)
-  colnames(dendro_df) <- c('Time', 'T2')
-  dendro_df$Time <- as.POSIXct(dendro_df$Time, format = "%Y-%m-%d %H:%M:%OS")
-  # print(paste(
-  #   "File",
-  #   file,
-  #   "contains",
-  #   length(unique(date(dendro_df$Time))),
-  #   "days"
-  # ))
-  days[i] <- length(unique(date(dendro_df$Time)))
-  sizes[i] <- nrow(dendro_df)
-  i <- i + 1
-  
-}

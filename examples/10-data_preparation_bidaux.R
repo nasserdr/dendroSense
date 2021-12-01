@@ -85,7 +85,7 @@ plot(my_dendro$date, my_dendro$T1C4_20)
 # Separate data by period
 
 my_dendro_filter <- my_dendro %>% 
-  filter(my_dendro$date > as.POSIXct("2021-06-20 01:00:00", tz="UTC"))
+  filter(my_dendro$date > as.POSIXct("2021-06-25 01:00:00", tz="UTC"))
 
 my_dendro_filter <- as.data.frame(my_dendro_filter)
 

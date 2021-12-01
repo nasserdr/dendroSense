@@ -19,8 +19,8 @@ with_tz(Sys.time(), "Etc/GMT+3")
 
 
 #Settings and discovery of the list of files
-idir <- "~/mnt/agroscope/Data-Work/26_Agricultural_Engineering-RE/263_DP/03_Persoenliche_Unterlagen/Wata/08-R_dendro_files/Hassan/Clean_signals_gathered"
-odir <- "~/mnt/agroscope/Data-Work/26_Agricultural_Engineering-RE/263_DP/03_Persoenliche_Unterlagen/Wata/08-R_dendro_files/Hassan/Jumps_fixed"
+idir <- "~/mnt/agroscope/Data-Work/26_Agricultural_Engineering-RE/263_DP/03_Persoenliche_Unterlagen/Wata/08-R_dendro_files/Hassan/2-Clean_signals_gathered"
+odir <- "~/mnt/agroscope/Data-Work/26_Agricultural_Engineering-RE/263_DP/03_Persoenliche_Unterlagen/Wata/08-R_dendro_files/Hassan/3-B-Jumps_fixed"
 files <- list.files(idir, pattern = '*.csv')
 timeZone_data   = "Europe/Berlin" # incorrect time zone in which the data was taken
 timeZone        = "Etc/GMT+3"     # correct time zone in Belém, Brazil
@@ -133,9 +133,12 @@ save_data <- function(jump_free_dendro, base, dendro, index){
 ######### RUN WITH INDEX from 1#
 ################################
 
-index <- 7 #Change from 1 to 29
+index <- 1 #Change from 1 to 29
 my_dendro <- load_data(index)
-jump_free_dendro <- jump.locator(my_dendro[2:nrow(my_dendro),], TreeNum = 1, v = 300)
+my_dendro$value <- my_dendro$value/1000
+jump_free_dendro <- jump.locator(my_dendro[2:nrow(my_dendro),], TreeNum = 1, v = 0.3)
+
+
 save_data(jump_free_dendro, base, dendro, index)
 
 

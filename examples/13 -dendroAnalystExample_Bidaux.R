@@ -4,6 +4,7 @@ library(dendRoAnalyst)
 library(dplyr)
 library(ggplot2)
 library(xts)
+library(chron)
 # install.packages("forecast")
 # install.packages("curl")
 # install.packages("dendrometeR")
@@ -25,10 +26,16 @@ for(file in files){
   
   #s <- substr(file, 1,4)
   s <- strsplit(file, '_') 
+
   s <- s[[1]][3]
   
-  dendro_df[,1] <- as.POSIXct(dendro_df[,1], format="%Y-%m-%dT %H:%M:%OSZ")
-  daily_stats_dendro <- daily.data(df = dendro_df, TreeNum = 1)
+  dendro_df[,1] <- as_datetime(dendro_df[,1], tz = "UTC", format = NULL)
+  
+  #dendro_df[,1] <- as.POSIXct(dendro_df[,1])
+  #dendro_df[,1] <- as.POSIXct(dendro_df[,1], format= "%Y-%m-%d %H:%M:%OS", usetz= FALSE)
+  
+  #Daily_status
+  daily_stats_dendro <- daily.data(dendro_df, TreeNum = 1)
   # Adding maximum daily shrinkage
   daily_stats_dendro <- daily_stats_dendro %>% 
     mutate(MDS = max - min, dendro = s)
@@ -55,23 +62,15 @@ d_all <- all_dendros
 d_all <- na.omit(d_all)
 str(d_all)
 
-library(lubridate)
-d_all[ , 2 ] <- ymd(d_all[, 2])
-
-
-d_all$DOY <-  as.Date(233, origin = '2020-08-20')
-d_all$date <- xts(d_all[,2], as.POSIXct(as.character(d_all[,2]), format="(%y/%m/%d %H:%M:%S)"))
-head(d_all)
-help("as.Date")
-
-library(anytime) 
-anydate("d_all[1,2]")
+all_dendros$date <-  as.Date(all_dendros$DOY, origin="2020-01-01")
 
 write.table(all_dendros, file.path(odir, 'all_dendros_stats.csv'), row.names = FALSE, sep = ';')
 
-
-
-
+#____________________________________________________________________________________________________________________________________________________________
+#____________________________________________________________________________________________________________________________________________________________
+#____________________________________________________________________________________________________________________________________________________________
+#____________________________________________________________________________________________________________________________________________________________
+#____________________________________________________________________________________________________________________________________________________________
 
 somePDFPath = "C:\\temp\\some.pdf"
 pdf(file=somePDFPath)  
